@@ -12,6 +12,7 @@ import os
 from scipy.ndimage import filters
 import urllib
 from random import randrange
+import glob
 
 def rgb2gray(rgb):
     '''Return the grayscale version of the RGB image rgb as a 2D numpy array
@@ -78,49 +79,66 @@ def part1(faces_file_name):
               #unsupress exceptions, which timeout() does)
               #testfile.retrieve(line.split()[4], "uncropped/"+filename)
               #timeout is used to stop downloading images which take too long to download
-              timeout(testfile.retrieve, (line.split()[4], "uncropped/"+filename), {}, 30)
+              #Continue downloading if download wasn't completed last time
               if not os.path.isfile("uncropped/"+filename):
-                  continue
-              #select 3d images
-              try:
-                  #read in the images                  
-                  img = imread("uncropped/" + filename)
-                  #Get the area of the faces
-                  face = line.split()[5].split(',')
-                  cropped = img[int(face[1]):int(face[3]), int(face[0]):int(face[2]), :]
-                  cropped = rgb2gray(cropped)    
-                  #Convert image to grayscale and resize image to 32X32
-                  result = imresize(cropped, (32,32))
-                  #save cropped image to the cropped folder, change heatmap version to grayscale
-                  plt.imsave("cropped/"+filename, result, cmap="gray")
-              except:
-                  print("Unable to load image: "+ filename)
-                  continue
-
+                  timeout(testfile.retrieve, (line.split()[4], "uncropped/"+filename), {}, 30)
+                  if not os.path.isfile("uncropped/"+filename):
+                      continue
+                  #select 3d images
+                  try:
+                      #read in the images                  
+                      img = imread("uncropped/" + filename)
+                      #Get the area of the faces
+                      face = line.split()[5].split(',')
+                      cropped = img[int(face[1]):int(face[3]), int(face[0]):int(face[2]), :]
+                      cropped = rgb2gray(cropped)    
+                      #Convert image to grayscale and resize image to 32X32
+                      result = imresize(cropped, (32,32))
+                      #save cropped image to the cropped folder, change heatmap version to grayscale
+                      plt.imsave("cropped/"+filename, result, cmap="gray")
+                  except:
+                      print("Unable to load image: "+ filename)
+                      continue
               i += 1
 def part2(act, training, validation, test):
-    '''Return the randomly assigned training, validation, test data array set
+    '''Return the randomly assigned training, validation, test data dictionary
     Arguments:
-    act -- array of an actor's filenames
+    act -- array of an actors' real names
     training -- range of training set
     validation -- range of validation set
     test -- range of test set
     '''
-    training_set = []
-    validation_set = []
-    test_set = []
-    actors = act.copy()
-    while (not actors.empty()):
-        random_index = randrange(len(actors))
-        random_data = actors.pop(random_index)
-        if len(training_set) < training:
-            training_set.append(random_data)
-        elif len(validation_set) < validation:
-            validation_set.append(random_data)
-        elif len(test_set) < test:
-            test_set.append(random_data)
+    training_set = {}
+    validation_set = {}
+    test_set = {}
+    
+    for a in act:
+        training_set[a] = []
+        validation_set[a] = []
+        test_set[a] = []
+        name = a.split()[1].lower()
+        #get the all filenames for the actor
+        files = glob.glob('uncropped/' + name + '*')
+        i = 0
+        while (len(files) > 0 and i < training + validation + test):
+            random_index = randrange(len(files))
+            random_data = files.pop(random_index)
+            if len(training_set[a]) < training:
+                training_set[a].append(random_data)
+            elif len(validation_set[a]) < validation:
+                validation_set[a].append(random_data)
+            elif len(test_set[a]) < test:
+                test_set[a].append(random_data)
+            i += 1
             
     return training_set, validation_set, test_set
 
 if __name__ == "__main__":
-  part1("facescrub_actresses.txt")
+  #part1("facescrub_actresses.txt")
+  act =['Lorraine Bracco', 'Peri Gilpin', 'Angie Harmon','Alec Baldwin', 'Bill Hader', 'Steve Carell']
+  a,b,c = part2(act, 30, 10, 10)
+  print(a)
+  print('\n')
+  print(b)
+  print('\n')
+  print(c)
